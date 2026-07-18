@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중3 과학 - 4세대 가계도 시뮬레이터 & AI 교실</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts & FontAwesome for Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .step-active {
+            border-color: #4f46e5;
+            color: #4f46e5;
+            background-color: #e0e7ff;
+        }
+        .pedigree-node {
+            transition: all 0.2s ease-in-out;
+        }
+        .pedigree-node:hover {
+            transform: scale(1.08);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- 상단 헤더 및 네비게이션 -->
+    <header class="bg-gradient-to-r from-indigo-700 to-violet-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-white/10 rounded-xl">
+                    <i class="fa-solid fa-dna text-2xl text-yellow-300"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold bg-indigo-500/50 px-2 py-0.5 rounded text-indigo-100">중3 과학 | 유전 법칙 디지털 설계</span>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight">4세대 가계도 정밀 추론 & 실시간 협업 시스템</h1>
+                </div>
+            </div>
+            <!-- 설계안 연계 정보 및 역할 선택기 -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <span class="bg-indigo-600 px-3 py-1.5 rounded-lg border border-indigo-500/30 flex items-center gap-1">
+                        <i class="fa-solid fa-chalkboard-user"></i> 성취기준 [9과21-05]
+                    </span>
+                    <span class="bg-violet-600 px-3 py-1.5 rounded-lg border border-violet-500/30 flex items-center gap-1">
+                        <i class="fa-solid fa-laptop-code"></i> 디벗 & Canva 연동
+                    </span>
+                </div>
+                <!-- 교사/학생 토글 버튼 -->
+                <div class="bg-slate-900/40 p-1 rounded-xl border border-white/20 flex gap-1">
+                    <button onclick="changeRole('student')" id="role-btn-student" class="px-3 py-1 text-xs font-bold rounded-lg transition-all bg-white text-indigo-800 shadow-sm">
+                        <i class="fa-solid fa-graduation-cap mr-1"></i>학생 모드
+                    </button>
+                    <button onclick="tryTeacherAccess()" id="role-btn-teacher" class="px-3 py-1 text-xs font-bold rounded-lg transition-all text-white/80 hover:text-white">
+                        <i class="fa-solid fa-user-shield mr-1"></i>교사 관리실
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 수업 단계별 탭 컨트롤러 (학생용일 때만 표시, 교사 대시보드일 때는 숨김) -->
+    <nav id="student-nav" class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-around md:justify-start gap-2 md:gap-8 py-3 overflow-x-auto">
+                <button onclick="switchTab('intro')" id="tab-intro" class="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-transparent transition-all step-active">
+                    <i class="fa-solid fa-lightbulb"></i> 1. 도입 (동기유발)
+                </button>
+                <button onclick="switchTab('simulation')" id="tab-simulation" class="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-transparent transition-all text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-flask"></i> 2. 탐색 (유전 교배실)
+                </button>
+                <button onclick="switchTab('pedigree')" id="tab-pedigree" class="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-transparent transition-all text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-diagram-project"></i> 3. 분석 (4세대 챌린지)
+                </button>
+                <button onclick="switchTab('wrapup')" id="tab-wrapup" class="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-transparent transition-all text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-pen-to-square"></i> 4. 정리 (캔바 및 제출)
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 알림 메시지 토스트 (alert 대체용) -->
+    <div id="toast-message" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none bg-slate-950 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
+        <span id="toast-icon" class="text-emerald-400"><i class="fa-solid fa-circle-check"></i></span>
+        <p id="toast-text" class="text-sm font-medium"></p>
+    </div>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ==================== 학생 뷰 패널 ==================== -->
+        <div id="student-view-container" class="space-y-6">
+            
+            <!-- 1단계: 도입 (Intro) -->
+            <section id="panel-intro" class="space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fa-solid fa-circle-play text-xl"></i></span>
+                        <h2 class="text-xl font-bold">도입: 4세대로 확장된 가계도의 중요성</h2>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed mb-4">
+                        실제 의학 및 연구 현장에서는 유전 형질이 어떻게 한 가문에서 전해 내려오는지 분석할 때 3세대를 넘어 <strong>4세대 이상의 방대한 가계 데이터</strong>를 연구합니다.
+                        이번 시간에는 가상의 귓볼 모양 유전 가계도 데이터(4세대)를 조작하고 역추적하여, 유전 법칙의 인과관계를 철저하게 검증해 보겠습니다.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col items-center text-center">
+                            <span class="text-3xl mb-2">👂</span>
+                            <h4 class="font-bold text-slate-800">우성: 분리형 귓볼 (F)</h4>
+                            <p class="text-xs text-slate-500 mt-1">유전자형: FF 또는 Ff<br>귓볼 아래가 뺨과 분리되어 둥근 모양</p>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col items-center text-center">
+                            <span class="text-3xl mb-2">📐</span>
+                            <h4 class="font-bold text-slate-800">열성: 부착형 귓볼 (f)</h4>
+                            <p class="text-xs text-slate-500 mt-1">유전자형: 반드시 ff<br>귓볼 아래가 뺨에 밀착하여 경사진 모양</p>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col items-center text-center">
+                            <span class="text-3xl mb-2">🧬</span>
+                            <h4 class="font-bold text-slate-800">핵심 포인트</h4>
+                            <p class="text-xs text-slate-500 mt-1">부모에게 보이지 않는 열성 형질이<br>자녀 세대에 발현된다면 그 부모는?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl">
+                        <h3 class="font-bold text-indigo-900 flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-circle-question text-indigo-600"></i> 오늘의 챌린지 퀘스트
+                        </h3>
+                        <p class="text-indigo-950 font-medium text-base leading-relaxed">
+                            "4세대로 뻗어있는 가문을 조사하여 정상 형질 사이에 숨겨져 있던 열성(ff) 대립유전자가 어떻게 대를 이어 발현되는지 유추하고 모든 생존 구성원의 유전자형을 논리적으로 밝혀내라!"
+                        </p>
+                    </div>
+
+                    <div class="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
+                        <h3 class="font-bold text-amber-900 flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> AI·디지털 학습 예절 및 유의사항
+                        </h3>
+                        <ul class="space-y-2 text-sm text-amber-950">
+                            <li class="flex items-start gap-2">
+                                <span class="text-amber-600 mt-0.5">•</span>
+                                <span><strong>모둠 협업 활성화:</strong> 디벗을 사용하여 교배 시뮬레이터 결과를 꼼꼼히 체크해 보세요.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-amber-600 mt-0.5">•</span>
+                                <span><strong>정답 보장제:</strong> 유추한 정보를 검증한 후에 캔바 및 서버에 제출할 수 있습니다.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-4">
+                    <button onclick="switchTab('simulation')" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        시뮬레이터 교배 실험실 입장 <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2단계: 탐색 (Simulation) -->
+            <section id="panel-simulation" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-flask text-xl"></i></span>
+                            <div>
+                                <h2 class="text-xl font-bold">임시 교배 실험실: 퍼넷 사각형 시뮬레이터</h2>
+                                <p class="text-xs text-slate-500">부모의 임시 대립유전자를 배합해 자손의 유전형 확률을 미리 연습하는 모의 공간입니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 부모 유전자 설정 버튼 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <!-- 부(Father) 설정 -->
+                        <div class="bg-blue-50/50 border border-blue-100 p-5 rounded-2xl flex flex-col items-center">
+                            <span class="text-sm font-bold text-blue-700 mb-3"><i class="fa-solid fa-mars"></i> 가상 아버지 (Father)</span>
+                            <div class="flex gap-2 w-full max-w-xs">
+                                <button onclick="setGenotype('father', 'FF')" id="btn-f-FF" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all">FF (순종)</button>
+                                <button onclick="setGenotype('father', 'Ff')" id="btn-f-Ff" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all">Ff (잡종)</button>
+                                <button onclick="setGenotype('father', 'ff')" id="btn-f-ff" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all">ff (열성)</button>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <div class="text-[10px] text-slate-500">지정된 아버지 대립인자</div>
+                                <div id="display-father-genotype" class="text-2xl font-bold text-blue-600 mt-1">Ff</div>
+                                <div id="display-father-phenotype" class="text-xs font-medium text-slate-600 mt-0.5">분리형 (우성)</div>
+                            </div>
+                        </div>
+
+                        <!-- 모(Mother) 설정 -->
+                        <div class="bg-pink-50/50 border border-pink-100 p-5 rounded-2xl flex flex-col items-center">
+                            <span class="text-sm font-bold text-pink-700 mb-3"><i class="fa-solid fa-venus"></i> 가상 어머니 (Mother)</span>
+                            <div class="flex gap-2 w-full max-w-xs">
+                                <button onclick="setGenotype('mother', 'FF')" id="btn-m-FF" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-pink-700 border border-pink-200 shadow-sm hover:bg-pink-100 transition-all">FF (순종)</button>
+                                <button onclick="setGenotype('mother', 'Ff')" id="btn-m-Ff" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-pink-700 border border-pink-200 shadow-sm hover:bg-pink-100 transition-all">Ff (잡종)</button>
+                                <button onclick="setGenotype('mother', 'ff')" id="btn-m-ff" class="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-pink-700 border border-pink-200 shadow-sm hover:bg-pink-100 transition-all">ff (열성)</button>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <div class="text-[10px] text-slate-500">지정된 어머니 대립인자</div>
+                                <div id="display-mother-genotype" class="text-2xl font-bold text-pink-600 mt-1">Ff</div>
+                                <div id="display-mother-phenotype" class="text-xs font-medium text-slate-600 mt-0.5">분리형 (우성)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 퍼넷 스퀘어 결과 보드 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                        <div class="lg:col-span-7 flex flex-col items-center bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                            <h3 class="font-bold text-slate-700 mb-4 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-table-cells"></i> 퍼넷 사각형 예측 확률 시각화
+                            </h3>
+                            <div class="grid grid-cols-3 gap-2 w-full max-w-sm text-center font-bold">
+                                <div class="bg-slate-200 p-3 rounded-lg text-xs flex items-center justify-center text-slate-600">부 \ 모</div>
+                                <div id="m-allele-1" class="bg-pink-100 text-pink-800 p-3 rounded-lg">F</div>
+                                <div id="m-allele-2" class="bg-pink-100 text-pink-800 p-3 rounded-lg">f</div>
+
+                                <div id="f-allele-1" class="bg-blue-100 text-blue-800 p-3 rounded-lg flex items-center justify-center">F</div>
+                                <div id="punnett-cell-1" class="bg-white p-4 rounded-lg border-2 border-slate-200 shadow-sm text-lg">FF</div>
+                                <div id="punnett-cell-2" class="bg-white p-4 rounded-lg border-2 border-slate-200 shadow-sm text-lg">Ff</div>
+
+                                <div id="f-allele-2" class="bg-blue-100 text-blue-800 p-3 rounded-lg flex items-center justify-center">f</div>
+                                <div id="punnett-cell-3" class="bg-white p-4 rounded-lg border-2 border-slate-200 shadow-sm text-lg">Ff</div>
+                                <div id="punnett-cell-4" class="bg-white p-4 rounded-lg border-2 border-slate-200 shadow-sm text-lg">ff</div>
+                            </div>
+                        </div>
+
+                        <!-- 통계 분석 결과 -->
+                        <div class="lg:col-span-5 space-y-4">
+                            <div class="bg-white p-5 rounded-2xl border-2 border-indigo-100 shadow-sm">
+                                <h4 class="font-bold text-indigo-900 mb-3 text-sm flex items-center gap-1">
+                                    <i class="fa-solid fa-chart-pie"></i> 대립 유전자 비율 및 이론적 기대값
+                                </h4>
+                                <div class="space-y-4" id="probability-results">
+                                    <div>
+                                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                                            <span>자녀 유전자형 비율</span>
+                                            <span id="genotype-ratio-text">FF (25%) : Ff (50%) : ff (25%)</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex" id="genotype-bar">
+                                            <div class="bg-indigo-600 h-full" style="width: 25%"></div>
+                                            <div class="bg-indigo-400 h-full" style="width: 50%"></div>
+                                            <div class="bg-rose-400 h-full" style="width: 25%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                                            <span>자녀 표현형 비율</span>
+                                            <span id="phenotype-ratio-text">분리형(우성) (75%) : 부착형(열성) (25%)</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex" id="phenotype-bar">
+                                            <div class="bg-emerald-500 h-full" style="width: 75%"></div>
+                                            <div class="bg-rose-400 h-full" style="width: 25%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-500 leading-relaxed">
+                                <span class="font-bold text-slate-700 block mb-1">💡 멘델의 분리 법칙 확인하기</span>
+                                부모가 둘 다 잡종 우성(Ff)일 때, 자손 세대에서 부모와 다른 열성 표현형(ff)이 정확히 25%의 확률로 발현하여 3:1의 분리비를 유지하게 됩니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between">
+                    <button onclick="switchTab('intro')" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> 이전 단계
+                    </button>
+                    <button onclick="switchTab('pedigree')" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        대망의 4세대 가계도 분석실 진입 <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3단계: 분석 및 토론 (Pedigree Challenge) -->
+            <section id="panel-pedigree" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fa-solid fa-diagram-project text-xl"></i></span>
+                        <div>
+                            <h2 class="text-xl font-bold">인터랙티브 4세대 가문 추론실</h2>
+                            <p class="text-xs text-slate-500">각 세대의 인물을 클릭하고 논리적으로 올바른 유전자형을 선택해 가계도를 완벽히 완성해 보세요!</p>
+                        </div>
+                    </div>
+
+                    <!-- 가상의 4세대 귓볼 유전 시나리오 설명서 -->
+                    <div class="bg-violet-50 border border-violet-100 p-5 rounded-2xl mb-6 text-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-violet-600 text-white text-xs px-2.5 py-1 rounded font-bold">4세대 탐구 시나리오</span>
+                            <span class="text-xs text-violet-700 font-bold">가문 주제: 박 교수네 가문 귓볼 유전</span>
+                        </div>
+                        <p class="text-violet-950 leading-relaxed font-medium">
+                            귓볼이 부착형(ff)인 <strong>1세대 증조할머니(1-2)</strong>와 분리형인 <strong>증조할아버지(1-1)</strong>의 가계가 계승됩니다.
+                            이후 태어난 2세대와 3세대를 거쳐, 최종 <strong>4세대의 민수 동생(4-2)</strong>에게서 부착형(ff)이 발현되었습니다.
+                            특히 <strong>외숙부(2-3)</strong>와 <strong>사촌동생(3-1)</strong>의 독자적 유전 특성을 단서 삼아, 온 가문의 유전자형을 파악해보세요.
+                            <br><span class="text-xs text-indigo-700 block mt-1.5 font-bold">* 정상(분리형) 대립인자는 F(우성)이며 부착형은 f(열성)입니다. 회색 노드는 분리형, 파란색/보라색 노드는 부착형(열성)을 의미합니다.</span>
+                        </p>
+                    </div>
+
+                    <!-- 가계도 안내 기호 -->
+                    <div class="flex flex-wrap items-center justify-center gap-6 bg-slate-50 py-3 px-4 rounded-xl border border-slate-200/60 text-xs mb-6">
+                        <div class="flex items-center gap-2"><span class="w-4 h-4 border-2 border-slate-400 bg-white inline-block"></span> 남성 (분리형)</div>
+                        <div class="flex items-center gap-2"><span class="w-4 h-4 border-2 border-slate-400 rounded-full bg-white inline-block"></span> 여성 (분리형)</div>
+                        <div class="flex items-center gap-2"><span class="w-4 h-4 bg-indigo-500 rounded inline-block"></span> 남성 (부착형 열성 - ff)</div>
+                        <div class="flex items-center gap-2"><span class="w-4 h-4 bg-indigo-500 rounded-full inline-block"></span> 여성 (부착형 열성 - ff)</div>
+                    </div>
+
+                    <!-- 4세대 가계도 가상 트리 렌더링 -->
+                    <div class="overflow-x-auto w-full border border-slate-200/80 rounded-2xl bg-slate-50 p-6 flex flex-col items-center">
+                        <div class="min-w-[800px] w-full max-w-4xl relative space-y-10">
+                            
+                            <!-- 1세대 -->
+                            <div class="flex justify-center items-center gap-16 relative">
+                                <span class="absolute left-0 text-xs font-bold text-slate-400">Generation I</span>
+                                
+                                <div class="flex items-center gap-8 relative">
+                                    <!-- 연결선 -->
+                                    <div class="absolute top-1/2 left-10 right-10 h-0.5 bg-slate-300 -z-10"></div>
+                                    <!-- 증조할아버지 -->
+                                    <div onclick="openPedigreeModal('node_1_1', 'I-1 (증조할아버지)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">I-1 증조부</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_1_1" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                    <!-- 증조할머니 -->
+                                    <div onclick="openPedigreeModal('node_1_2', 'I-2 (증조할머니)')" class="pedigree-node cursor-pointer bg-indigo-500 text-white border-2 border-indigo-700 p-3 w-28 text-center rounded-full shadow-md">
+                                        <div class="text-[10px] font-bold text-indigo-200">I-2 증조모</div>
+                                        <div class="text-xs font-medium">부착형 (ff)</div>
+                                        <div id="p-node_1_2" class="text-yellow-300 font-extrabold text-sm mt-1">ff</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 수직 연결선 1 -> 2 세대 -->
+                            <div class="absolute top-[55px] left-1/2 h-10 w-0.5 bg-slate-300 -translate-x-1/2 -z-10"></div>
+
+                            <!-- 2세대 -->
+                            <div class="flex justify-around items-center gap-6 relative pt-4">
+                                <span class="absolute left-0 text-xs font-bold text-slate-400">Generation II</span>
+                                <div class="absolute top-0 left-1/4 right-1/4 h-0.5 bg-slate-300 -z-10"></div>
+                                
+                                <!-- 가계지 1: 고모할머니 내외 -->
+                                <div class="flex items-center gap-4 relative">
+                                    <div class="absolute top-1/2 left-8 right-8 h-0.5 bg-slate-300 -z-10"></div>
+                                    <!-- II-1 할아버지 -->
+                                    <div onclick="openPedigreeModal('node_2_1', 'II-1 (할아버지)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">II-1 할아버지</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_2_1" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                    <!-- II-2 할머니 -->
+                                    <div onclick="openPedigreeModal('node_2_2', 'II-2 (할머니)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded-full shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">II-2 할머니</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_2_2" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                </div>
+
+                                <!-- 가계지 2: 외숙모 가계 -->
+                                <div class="flex items-center gap-4 relative">
+                                    <div class="absolute top-1/2 left-8 right-8 h-0.5 bg-slate-300 -z-10"></div>
+                                    <!-- II-3 외숙부 -->
+                                    <div onclick="openPedigreeModal('node_2_3', 'II-3 (외숙부)')" class="pedigree-node cursor-pointer bg-indigo-500 text-white border-2 border-indigo-700 p-3 w-28 text-center rounded shadow-md">
+                                        <div class="text-[10px] font-bold text-indigo-200">II-3 외숙부</div>
+                                        <div class="text-xs font-medium">부착형 (ff)</div>
+                                        <div id="p-node_2_3" class="text-yellow-300 font-extrabold text-sm mt-1">ff</div>
+                                    </div>
+                                    <!-- II-4 외숙모 -->
+                                    <div onclick="openPedigreeModal('node_2_4', 'II-4 (외숙모)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded-full shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">II-4 외숙모</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_2_4" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3세대 -->
+                            <div class="flex justify-around items-center gap-6 relative pt-4">
+                                <span class="absolute left-0 text-xs font-bold text-slate-400">Generation III</span>
+                                
+                                <!-- 할아버지네 사촌 라인 -->
+                                <div class="flex items-center gap-4 relative">
+                                    <div class="absolute top-0 left-1/2 h-5 w-0.5 bg-slate-300"></div>
+                                    <div class="absolute top-5 left-1/4 right-1/4 h-0.5 bg-slate-300"></div>
+                                    <!-- III-1 사촌형제 -->
+                                    <div onclick="openPedigreeModal('node_3_1', 'III-1 (사촌형제)')" class="pedigree-node cursor-pointer bg-indigo-500 text-white border-2 border-indigo-700 p-3 w-28 text-center rounded shadow-md">
+                                        <div class="text-[10px] font-bold text-indigo-200">III-1 사촌</div>
+                                        <div class="text-xs font-medium">부착형 (ff)</div>
+                                        <div id="p-node_3_1" class="text-yellow-300 font-extrabold text-sm mt-1">ff</div>
+                                    </div>
+                                    <!-- III-2 사촌누나 -->
+                                    <div onclick="openPedigreeModal('node_3_2', 'III-2 (사촌누나)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded-full shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">III-2 사촌 누나</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_3_2" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                </div>
+
+                                <!-- 외숙모댁 부모 라인 -->
+                                <div class="flex items-center gap-4 relative">
+                                    <div class="absolute top-0 left-1/2 h-5 w-0.5 bg-slate-300"></div>
+                                    <div class="absolute top-5 left-1/4 right-1/4 h-0.5 bg-slate-300"></div>
+                                    <div class="absolute top-1/2 left-8 right-8 h-0.5 bg-slate-300 -z-10"></div>
+                                    <!-- III-3 아버지 -->
+                                    <div onclick="openPedigreeModal('node_3_3', 'III-3 (아버지)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">III-3 아버지</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_3_3" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                    <!-- III-4 어머니 -->
+                                    <div onclick="openPedigreeModal('node_3_4', 'III-4 (어머니)')" class="pedigree-node cursor-pointer bg-white border-2 border-slate-400 p-3 w-28 text-center rounded-full shadow-sm">
+                                        <div class="text-[10px] font-bold text-slate-500">III-4 어머니</div>
+                                        <div class="text-xs font-medium text-slate-700">분리형</div>
+                                        <div id="p-node_3_4" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4세대 -->
+                            <div class="flex justify-end items-center gap-12 relative pt-6 pr-12">
+                                <span class="absolute left-0 text-xs font-bold text-slate-400">Generation IV</span>
+                                <div class="absolute top-0 right-[15%] left-1/2 h-0.5 bg-slate-300 -z-10"></div>
+                                <div class="absolute top-0 right-[25%] h-6 w-0.5 bg-slate-300"></div>
+                                <div class="absolute top-0 right-[62%] h-6 w-0.5 bg-slate-300"></div>
+
+                                <!-- IV-1 민수 (본인) -->
+                                <div onclick="openPedigreeModal('node_4_1', 'IV-1 (민수)')" class="pedigree-node cursor-pointer bg-white border-2 border-indigo-500 p-3 w-28 text-center rounded shadow-sm">
+                                    <div class="text-[10px] font-bold text-indigo-600">IV-1 민수 (나)</div>
+                                    <div class="text-xs font-medium text-slate-700">분리형</div>
+                                    <div id="p-node_4_1" class="text-indigo-600 font-extrabold text-sm mt-1">-</div>
+                                </div>
+
+                                <!-- IV-2 민수 동생 -->
+                                <div onclick="openPedigreeModal('node_4_2', 'IV-2 (민수 동생)')" class="pedigree-node cursor-pointer bg-indigo-500 text-white border-2 border-indigo-700 p-3 w-28 text-center rounded-full shadow-md">
+                                    <div class="text-[10px] font-bold text-indigo-200">IV-2 동생</div>
+                                    <div class="text-xs font-medium">부착형 (ff)</div>
+                                    <div id="p-node_4_2" class="text-yellow-300 font-extrabold text-sm mt-1">ff</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- 검증 버튼 모음 -->
+                    <div class="mt-8 flex justify-center gap-4">
+                        <button onclick="checkComprehensivePedigree()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-square-poll-vertical"></i> 온가족 유전자 추론 검증하기
+                        </button>
+                        <button onclick="resetComprehensivePedigree()" class="px-5 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition-all">
+                            선택 리셋
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 모둠 토론 질문 리스트 -->
+                <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl">
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center gap-1.5 text-sm">
+                        <i class="fa-solid fa-messages"></i> 고난도 추론 논리 흐름 퀴즈
+                    </h4>
+                    <p class="text-xs text-indigo-950 leading-relaxed">
+                        1. <strong>힌트 A:</strong> 증조할머니가 ff이므로 자녀인 할아버지(II-1)는 겉으로는 정상이어도 유전형에 열성 f가 숨겨진 잡종(Ff)이 될 수 밖에 없습니다.<br>
+                        2. <strong>힌트 B:</strong> 4세대 동생이 ff이므로 부모인 아버지(III-3)와 어머니(III-4)는 반드시 대립인자 f를 하나씩 전수해준 잡종(Ff)입니다.
+                    </p>
+                </div>
+
+                <!-- 대립유전자형 지정용 모달 윈도우 -->
+                <div id="pedigree-action-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-1">인물별 유전자형 추론 지정</h3>
+                        <p id="target-member-name" class="text-xs text-slate-400 mb-4">대상자: -</p>
+                        
+                        <div class="space-y-2 mb-6">
+                            <button onclick="applyGenotypeToTarget('FF')" class="w-full py-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl font-bold transition-all text-left px-4 flex justify-between items-center">
+                                <span>FF (우성 순종)</span>
+                                <span class="text-xs text-slate-400 font-normal">반드시 우성인자 F만 유전됨</span>
+                            </button>
+                            <button onclick="applyGenotypeToTarget('Ff')" class="w-full py-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl font-bold transition-all text-left px-4 flex justify-between items-center">
+                                <span>Ff (우성 잡종)</span>
+                                <span class="text-xs text-slate-400 font-normal">F와 f 둘다 전달 가능</span>
+                            </button>
+                            <button onclick="applyGenotypeToTarget('ff')" class="w-full py-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl font-bold transition-all text-left px-4 flex justify-between items-center">
+                                <span>ff (열성 순종)</span>
+                                <span class="text-xs text-slate-400 font-normal">부착형 외관으로 발현</span>
+                            </button>
+                            <button onclick="applyGenotypeToTarget('FF_or_Ff')" class="w-full py-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl font-bold transition-all text-left px-4 flex justify-between items-center">
+                                <span>FF 또는 Ff (확인불가)</span>
+                                <span class="text-xs text-slate-400 font-normal">확실히 결정하기 어려운 상태</span>
+                            </button>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button onclick="closePedigreeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold">창닫기</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between">
+                    <button onclick="switchTab('simulation')" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> 이전 단계
+                    </button>
+                    <button onclick="switchTab('wrapup')" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        최종 결과 작성 및 제출실 <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 4단계: 정리 및 피드백 (Wrapup) -->
+            <section id="panel-wrapup" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2 bg-violet-50 text-violet-600 rounded-lg"><i class="fa-solid fa-pen-to-square text-xl"></i></span>
+                        <div>
+                            <h2 class="text-xl font-bold">탐구 보고서 취합 및 저장</h2>
+                            <p class="text-xs text-slate-500">조사한 내용을 최종 정리하여 실시간 서버로 전송하고, 캔바 협동 보드에도 붙여넣기 하세요.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- 보고서 인풋 -->
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-invoice"></i> 나의 핵심 탐구 보고서 기록
+                            </h3>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">모둠명 및 이름 (필수)</label>
+                                <input id="student-name-input" type="text" placeholder="예: 2모둠 / 김철수, 이지혜" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Q1. 1세대 증조할머니(ff)를 통해 2세대 할아버지(II-1)의 유전자형을 100% 특정할 수 있는 이유를 설명하세요.</label>
+                                <textarea id="student-q1-input" rows="3" placeholder="예: 증조할머니는 열성 순종(ff)이므로 자녀에게 반드시 f 대립인자를 하나 전수해주기 때문입니다." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Q2. 민수(IV-1)와 사촌누나(III-2)의 유전자형을 한가지로 특정할 수 없는 차이점을 기술하시오.</label>
+                                <textarea id="student-q2-input" rows="3" placeholder="예: 민수와 사촌누나 모두 분리형이며 부모가 각각 Ff x Ff 이므로 FF이거나 Ff가 될 수 있지만, 이들의 자녀 혹은 자매 자료가 추가적으로 없으므로 두 경우 모두 가능하여 특정하기 어렵습니다." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">모둠 참여 및 문제해결 자가 성찰</label>
+                                <div class="flex gap-2">
+                                    <button onclick="assignSelfScore('최우수')" id="score-btn-high" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all">✨ 최우수 (스스로 완수함)</button>
+                                    <button onclick="assignSelfScore('우수')" id="score-btn-mid" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all">👍 우수 (도움을 받아 해결함)</button>
+                                    <button onclick="assignSelfScore('노력요함')" id="score-btn-low" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all">🌱 노력요함 (더 배워야 함)</button>
+                                </div>
+                            </div>
+                            
+                            <!-- 클라우드 서버 실시간 전송 전용 버튼 -->
+                            <div class="pt-2">
+                                <button onclick="submitToTeacherServer()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> 교사용 실시간 대시보드로 제출하기
+                                </button>
+                                <p class="text-[10px] text-slate-400 text-center mt-1.5">
+                                    * 제출하면 교사용 디지털 대시보드 화면에 기록이 실시간으로 동기화됩니다.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 캔바 복사용 데이터 보드 -->
+                        <div class="bg-indigo-950 text-indigo-100 p-5 rounded-2xl flex flex-col justify-between shadow-inner">
+                            <div>
+                                <div class="flex justify-between items-center mb-4">
+                                    <span class="text-xs bg-indigo-800 border border-indigo-700 px-3 py-1 rounded-full font-bold flex items-center gap-1">
+                                        <i class="fa-solid fa-copy"></i> Canva 제출용 데이터 클립보드
+                                    </span>
+                                    <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                                </div>
+                                <div id="canva-report-block" class="space-y-3 text-[11px] font-mono select-all bg-indigo-900/50 p-4 rounded-xl border border-indigo-800 max-h-72 overflow-y-auto leading-relaxed">
+                                    <p class="text-yellow-300 font-bold">🧬 [중3 유전학 4세대 가계도 분석표]</p>
+                                    <p>• 소속/성명: <span id="out-student-name">(미작성)</span></p>
+                                    <p>---------------------------------------</p>
+                                    <p class="font-bold text-indigo-200">[4세대 인물 유전자 추론 결과]</p>
+                                    <p>- I-1 (증조부): <span id="out-gen-1-1">-</span> | I-2 (증조모): ff</p>
+                                    <p>- II-1 (조부): <span id="out-gen-2-1">-</span> | II-2 (조모): <span id="out-gen-2-2">-</span></p>
+                                    <p>- II-3 (외숙부): ff | II-4 (외숙모): <span id="out-gen-2-4">-</span></p>
+                                    <p>- III-1 (사촌): ff | III-2 (사촌누나): <span id="out-gen-3-2">-</span></p>
+                                    <p>- III-3 (부): <span id="out-gen-3-3">-</span> | III-4 (모): <span id="out-gen-3-4">-</span></p>
+                                    <p>- IV-1 (민수): <span id="out-gen-4-1">-</span> | IV-2 (동생): ff</p>
+                                    <p>---------------------------------------</p>
+                                    <p class="font-bold text-indigo-200">[질문 답변 기록]</p>
+                                    <p>A1. <span id="out-student-q1" class="text-white">-</span></p>
+                                    <p>A2. <span id="out-student-q2" class="text-white">-</span></p>
+                                    <p>---------------------------------------</p>
+                                    <p>• 나의 자가 성찰 점수: <span id="out-student-score" class="text-yellow-300">미지정</span></p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button onclick="copyToCanvaClip()" class="w-full py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-900 font-extrabold rounded-xl shadow-lg hover:shadow-yellow-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-clipboard"></i> 캔바 보고서 카드 복사하기
+                                </button>
+                                <p class="text-[10px] text-indigo-300 text-center mt-2">
+                                    * 복사한 데이터를 캔바(Canva) 모둠 대시보드 템플릿의 텍스트 필드에 붙여넣어(Ctrl+V) 마무리하세요.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ==================== 교사용 실시간 대시보드 패널 ==================== -->
+        <div id="teacher-view-container" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><i class="fa-solid fa-table-columns text-2xl"></i></span>
+                        <div>
+                            <h2 class="text-xl font-bold">학생 실시간 학습 상태 관제반</h2>
+                            <p class="text-xs text-slate-500">학생들이 디벗으로 제출한 가계도 분석 보고서가 실시간으로 수집되는 공간입니다.</p>
+                        </div>
+                    </div>
+                    <!-- 액션 버튼 -->
+                    <div class="flex gap-2">
+                        <button onclick="refreshDashboardManually()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate"></i> 대시보드 수동 동기화
+                        </button>
+                        <button onclick="clearAllSubmissionsWithConfirm()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg text-xs transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i> 제출 데이터 초기화 (신규 수업용)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 통계 개요 카드 -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex items-center gap-4">
+                        <div class="p-3 bg-indigo-100 text-indigo-700 rounded-lg"><i class="fa-solid fa-user-group text-lg"></i></div>
+                        <div>
+                            <div class="text-[10px] text-slate-400 font-bold">총 제출 인원 / 모둠</div>
+                            <div id="stat-total-count" class="text-xl font-black text-slate-800">0 건</div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex items-center gap-4">
+                        <div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg"><i class="fa-solid fa-circle-check text-lg"></i></div>
+                        <div>
+                            <div class="text-[10px] text-slate-400 font-bold">가계도 완벽 해결 성공률</div>
+                            <div id="stat-correct-rate" class="text-xl font-black text-emerald-600">0%</div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex items-center gap-4">
+                        <div class="p-3 bg-amber-100 text-amber-700 rounded-lg"><i class="fa-solid fa-star-half-stroke text-lg"></i></div>
+                        <div>
+                            <div class="text-[10px] text-slate-400 font-bold">성실 참여 자가등급 (최우수 비율)</div>
+                            <div id="stat-excellent-rate" class="text-xl font-black text-amber-600">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 학생 데이터 그리드 테이블 -->
+                <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-500 uppercase font-semibold">
+                            <tr>
+                                <th scope="col" class="px-6 py-3.5">모둠 / 학생 성명</th>
+                                <th scope="col" class="px-6 py-3.5">가계도 추론상태 (정답검증)</th>
+                                <th scope="col" class="px-6 py-3.5">핵심 귓볼 증조부모 질문 (Q1)</th>
+                                <th scope="col" class="px-6 py-3.5">민수 사촌 누나 구분 질문 (Q2)</th>
+                                <th scope="col" class="px-6 py-3.5">자가 참여도 성찰</th>
+                                <th scope="col" class="px-6 py-3.5">제출 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-dashboard-tbody" class="divide-y divide-slate-200 bg-white text-slate-700 font-medium">
+                            <!-- 로딩 상태 표시 -->
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i class="fa-solid fa-spinner animate-spin text-xl text-indigo-500"></i>
+                                        <span>실시간 학생 수집판을 활성화하는 중입니다...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 교사 패스워드 입력 레이어 모달 -->
+    <div id="teacher-auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div class="p-3 bg-indigo-50 text-indigo-600 rounded-full inline-block mb-3"><i class="fa-solid fa-lock text-xl"></i></div>
+            <h3 class="text-lg font-bold text-slate-800 mb-1">교사용 대시보드 진입 잠금</h3>
+            <p class="text-xs text-slate-400 mb-4">학습 데이터 관리와 피드백을 위해 비밀번호를 입력해주세요.</p>
+            
+            <div class="space-y-4 mb-6">
+                <input id="teacher-pwd-input" type="password" placeholder="비밀번호 입력" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold tracking-widest text-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <p id="auth-error-msg" class="text-xs text-rose-500 hidden font-bold"><i class="fa-solid fa-triangle-exclamation"></i> 암호가 일치하지 않습니다.</p>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closeTeacherAuthModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold">이전 화면으로</button>
+                <button onclick="verifyTeacherAccess()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold">인증 및 진입</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 커스텀 삭제 확인 모달 (기본 confirm 차단) -->
+    <div id="confirm-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div class="p-3 bg-rose-50 text-rose-600 rounded-full inline-block mb-3"><i class="fa-solid fa-triangle-exclamation text-2xl animate-bounce"></i></div>
+            <h3 class="text-lg font-bold text-slate-800 mb-1">제출 데이터 전체 삭제</h3>
+            <p class="text-xs text-slate-400 mb-4">현재까지 학생이 저장한 모든 기록들이 초기화됩니다. 이 작업은 되돌릴 수 없습니다. 진행하시겠습니까?</p>
+            
+            <div class="flex gap-2">
+                <button onclick="closeDeleteConfirmModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold">취소</button>
+                <button onclick="executeAllSubmissionsDelete()" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold">전체 삭제 실행</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 크레딧 배너 -->
+    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs border-t border-slate-800 mt-auto">
+        <p>© 2026 AI-디지털 도구 활용 교수학습설계안 (과학과 4세대 유전 프로젝트 교실)</p>
+        <p class="mt-1 text-slate-500">본 대시보드는 캔바(Canva) 협업 및 교사용 클라우드 연동을 원활히 지원합니다.</p>
+    </footer>
+
+    <!-- 파이어베이스 v11.6.1 및 핵심 로직 제어 스크립트 -->
+    <script type="module">
+        // Firebase Core Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config 및 전역 인프라 안전 가동
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-digital-science-class';
+        let firebaseConfig = {};
+        
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                // 비정상 설정 대비 기본 데모 키 구성 (로컬 스토리지 모드 자동 트리거)
+                apiKey: "demo-api-key",
+                authDomain: "demo.firebaseapp.com",
+                projectId: "demo-project",
+                storageBucket: "demo.appspot.com",
+                messagingSenderId: "123456",
+                appId: "1:123456:web:123"
+            };
+        } catch(e) {
+            console.warn("Firebase configuration parsing error. Falling back to local offline sandbox.", e);
+        }
+
+        let app, db, auth;
+        let isFirebaseOnline = false;
+
+        // 데이터베이스 엔진 구축
+        async function initDatabaseEngine() {
+            if (firebaseConfig.apiKey !== "demo-api-key") {
+                try {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // 인증 보장
+                    let userCredential;
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        userCredential = await signInAnonymously(auth);
+                    }
+                    
+                    if (userCredential.user) {
+                        isFirebaseOnline = true;
+                        console.log("Firestore cloud connection successfully established.");
+                    }
+                } catch(e) {
+                    console.error("Firebase connection failed. Graceful fallback mode initiated.", e);
+                    isFirebaseOnline = false;
+                }
+            } else {
+                console.log("Running in offline mode. LocalStorage will handle mock persistence.");
+            }
+            
+            // 데이터 구독 실행
+            activateRealtimeSubmissions();
+        }
+
+        // 전역 상태 정의
+        window.appState = {
+            currentRole: 'student', // student or teacher
+            activeTab: 'intro',
+            selectedTrait: 'earlobe',
+            simulation: {
+                father: 'Ff',
+                mother: 'Ff'
+            },
+            // 가계도 상태관리 (추론 대상만 가변, 문제의 고정값은 이미 기입해둠)
+            pedigree: {
+                node_1_1: null, // 증조부 (정답: Ff)
+                node_1_2: 'ff', // 증조모 (고정)
+                node_2_1: null, // 조부 (정답: Ff)
+                node_2_2: null, // 조모 (정답: FF_or_Ff)
+                node_2_3: 'ff', // 외숙부 (고정)
+                node_2_4: null, // 외숙모 (정답: Ff)
+                node_3_1: 'ff', // 사촌 (고정)
+                node_3_2: null, // 사촌누나 (정답: FF_or_Ff)
+                node_3_3: null, // 부 (정답: Ff)
+                node_3_4: null, // 모 (정답: Ff)
+                node_4_1: null, // 민수 (정답: FF_or_Ff)
+                node_4_2: 'ff'  // 동생 (고정)
+            },
+            selectedMemberNode: null,
+            selfScore: '미지정',
+            allSubmissions: [] // 교사용 대시보드 저장용
+        };
+
+        // 정답 검증용 기준 유전자 매핑 데이터
+        const pedigreeAnswersKey = {
+            node_1_1: 'Ff',
+            node_2_1: 'Ff',
+            node_2_2: 'FF_or_Ff',
+            node_2_4: 'Ff',
+            node_3_2: 'FF_or_Ff',
+            node_3_3: 'Ff',
+            node_3_4: 'Ff',
+            node_4_1: 'FF_or_Ff'
+        };
+
+        // 로컬 오프라인 더미 데이터 저장소 백업용
+        const LOCAL_STORAGE_KEY = 'ai_digital_pedigree_submissions';
+
+        // 귓볼 모양 형질 매핑
+        const traitConfig = {
+            dominant: 'F', recessive: 'f', domName: '분리형', recName: '부착형'
+        };
+
+        // HTML 탭 및 모드 조작 전역 바인딩
+        window.switchTab = function(tabId) {
+            document.getElementById('panel-intro').classList.add('hidden');
+            document.getElementById('panel-simulation').classList.add('hidden');
+            document.getElementById('panel-pedigree').classList.add('hidden');
+            document.getElementById('panel-wrapup').classList.add('hidden');
+
+            document.getElementById('tab-intro').className = document.getElementById('tab-intro').className.replace('step-active', 'text-slate-600 hover:bg-slate-50');
+            document.getElementById('tab-simulation').className = document.getElementById('tab-simulation').className.replace('step-active', 'text-slate-600 hover:bg-slate-50');
+            document.getElementById('tab-pedigree').className = document.getElementById('tab-pedigree').className.replace('step-active', 'text-slate-600 hover:bg-slate-50');
+            document.getElementById('tab-wrapup').className = document.getElementById('tab-wrapup').className.replace('step-active', 'text-slate-600 hover:bg-slate-50');
+
+            document.getElementById('panel-' + tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('tab-' + tabId);
+            activeBtn.className = activeBtn.className.replace('text-slate-600 hover:bg-slate-50', 'step-active');
+            
+            window.appState.activeTab = tabId;
+            syncCanvaReportText();
+        }
+
+        // 교사/학생 역할 전환
+        window.changeRole = function(role) {
+            const isAuthorized = (role === 'student');
+            
+            if (isAuthorized) {
+                window.appState.currentRole = 'student';
+                document.getElementById('student-view-container').classList.remove('hidden');
+                document.getElementById('student-nav').classList.remove('hidden');
+                document.getElementById('teacher-view-container').classList.add('hidden');
+
+                document.getElementById('role-btn-student').className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-white text-indigo-800 shadow-sm";
+                document.getElementById('role-btn-teacher').className = "px-3 py-1 text-xs font-bold rounded-lg transition-all text-white/80 hover:text-white";
+                showToast("학생 탐구 모드로 전환되었습니다.");
+            } else {
+                window.appState.currentRole = 'teacher';
+                document.getElementById('student-view-container').classList.add('hidden');
+                document.getElementById('student-nav').classList.add('hidden');
+                document.getElementById('teacher-view-container').classList.remove('hidden');
+
+                document.getElementById('role-btn-student').className = "px-3 py-1 text-xs font-bold rounded-lg transition-all text-white/80 hover:text-white";
+                document.getElementById('role-btn-teacher').className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-white text-indigo-800 shadow-sm";
+                showToast("🔒 교사용 실시간 분석 대시보드가 정상 잠금 해제되었습니다.", true);
+                renderTeacherDashboard();
+            }
+        }
+
+        // 교사 진입 비밀번호 검증 트리거
+        window.tryTeacherAccess = function() {
+            if (window.appState.currentRole === 'teacher') {
+                return; // 이미 교사 모드임
+            }
+            // 비밀번호 레이어 표시
+            document.getElementById('teacher-pwd-input').value = '';
+            document.getElementById('auth-error-msg').classList.add('hidden');
+            document.getElementById('teacher-auth-modal').classList.remove('hidden');
+            document.getElementById('teacher-pwd-input').focus();
+        }
+
+        window.closeTeacherAuthModal = function() {
+            document.getElementById('teacher-auth-modal').classList.add('hidden');
+        }
+
+        window.verifyTeacherAccess = function() {
+            const pwd = document.getElementById('teacher-pwd-input').value;
+            if (pwd === "1234") {
+                document.getElementById('teacher-auth-modal').classList.add('hidden');
+                changeRole('teacher');
+            } else {
+                document.getElementById('auth-error-msg').classList.remove('hidden');
+            }
+        }
+
+        // 시뮬레이터 제어부
+        window.setGenotype = function(parent, val) {
+            window.appState.simulation[parent] = val;
+            
+            // UI 변경 반영
+            let displayPhenotype = (val.includes('F')) ? '분리형 (우성)' : '부착형 (열성)';
+            
+            if (parent === 'father') {
+                document.getElementById('display-father-genotype').innerText = val;
+                document.getElementById('display-father-phenotype').innerText = displayPhenotype;
+                ['FF', 'Ff', 'ff'].forEach(g => {
+                    const btn = document.getElementById(`btn-f-${g}`);
+                    btn.className = (g === val) ? "flex-1 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md transition-all" : "flex-1 py-2 rounded-xl text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all";
+                });
+            } else {
+                document.getElementById('display-mother-genotype').innerText = val;
+                document.getElementById('display-mother-phenotype').innerText = displayPhenotype;
+                ['FF', 'Ff', 'ff'].forEach(g => {
+                    const btn = document.getElementById(`btn-m-${g}`);
+                    btn.className = (g === val) ? "flex-1 py-2 rounded-xl text-xs font-bold bg-pink-600 text-white shadow-md transition-all" : "flex-1 py-2 rounded-xl text-xs font-bold bg-white text-pink-700 border border-pink-200 shadow-sm hover:bg-pink-100 transition-all";
+                });
+            }
+            calculatePunnettSquare();
+        }
+
+        // 시뮬레이터 연산
+        function calculatePunnettSquare() {
+            const dad = window.appState.simulation.father;
+            const mom = window.appState.simulation.mother;
+
+            const fatherAlleles = [dad[0], dad[1]];
+            const motherAlleles = [mom[0], mom[1]];
+
+            document.getElementById('m-allele-1').innerText = motherAlleles[0];
+            document.getElementById('m-allele-2').innerText = motherAlleles[1];
+            document.getElementById('f-allele-1').innerText = fatherAlleles[0];
+            document.getElementById('f-allele-2').innerText = fatherAlleles[1];
+
+            const cells = [
+                combine(fatherAlleles[0], motherAlleles[0]),
+                combine(fatherAlleles[0], motherAlleles[1]),
+                combine(fatherAlleles[1], motherAlleles[0]),
+                combine(fatherAlleles[1], motherAlleles[1])
+            ];
+
+            // 4개 셀 표기
+            for (let i = 0; i < 4; i++) {
+                const cellEl = document.getElementById(`punnett-cell-${i+1}`);
+                cellEl.innerText = cells[i];
+                if (cells[i] === 'ff') {
+                    cellEl.className = "bg-rose-50 text-rose-700 p-4 rounded-lg border-2 border-rose-200 shadow-inner text-lg font-extrabold";
+                } else {
+                    cellEl.className = "bg-white p-4 rounded-lg border-2 border-slate-200 shadow-sm text-lg font-extrabold text-slate-800";
+                }
+            }
+
+            // 비율 통계
+            const stats = { FF: 0, Ff: 0, ff: 0 };
+            cells.forEach(c => stats[c]++);
+
+            const genLabels = [];
+            if (stats.FF > 0) genLabels.push(`FF (${stats.FF * 25}%)`);
+            if (stats.Ff > 0) genLabels.push(`Ff (${stats.Ff * 25}%)`);
+            if (stats.ff > 0) genLabels.push(`ff (${stats.ff * 25}%)`);
+            document.getElementById('genotype-ratio-text').innerText = genLabels.join(' : ');
+
+            const genBar = document.getElementById('genotype-bar');
+            genBar.innerHTML = '';
+            ['FF', 'Ff', 'ff'].forEach(key => {
+                const pct = stats[key] * 25;
+                if (pct > 0) {
+                    const col = key === 'FF' ? 'bg-indigo-600' : key === 'Ff' ? 'bg-indigo-400' : 'bg-rose-400';
+                    genBar.innerHTML += `<div class="${col} h-full" style="width: ${pct}%"></div>`;
+                }
+            });
+
+            const domCount = stats.FF + stats.Ff;
+            const recCount = stats.ff;
+            const phenLabels = [];
+            if (domCount > 0) phenLabels.push(`분리형 (${domCount * 25}%)`);
+            if (recCount > 0) phenLabels.push(`부착형 (${recCount * 25}%)`);
+            document.getElementById('phenotype-ratio-text').innerText = phenLabels.join(' : ');
+
+            const phenBar = document.getElementById('phenotype-bar');
+            phenBar.innerHTML = '';
+            if (domCount > 0) phenBar.innerHTML += `<div class="bg-emerald-500 h-full" style="width: ${domCount * 25}%"></div>`;
+            if (recCount > 0) phenBar.innerHTML += `<div class="bg-rose-400 h-full" style="width: ${recCount * 25}%"></div>`;
+        }
+
+        function combine(a, b) {
+            if (a === 'F' || b === 'F') {
+                if (a === 'f' || b === 'f') return 'Ff';
+                return 'FF';
+            }
+            return 'ff';
+        }
+
+        // 가계도 인터랙티브 클릭 제어
+        window.openPedigreeModal = function(nodeKey, memberName) {
+            if (nodeKey === 'node_1_2' || nodeKey === 'node_2_3' || nodeKey === 'node_3_1' || nodeKey === 'node_4_2') {
+                showToast("이 구성원은 이미 물리적 발현 특징에 의해 'ff(열성)'로 확정되어 있습니다.", false);
+                return;
+            }
+            window.appState.selectedMemberNode = nodeKey;
+            document.getElementById('target-member-name').innerText = `대상 구성원: ${memberName}`;
+            document.getElementById('pedigree-action-modal').classList.remove('hidden');
+        }
+
+        window.closePedigreeModal = function() {
+            document.getElementById('pedigree-action-modal').classList.add('hidden');
+        }
+
+        window.applyGenotypeToTarget = function(genotype) {
+            const target = window.appState.selectedMemberNode;
+            if (!target) return;
+
+            window.appState.pedigree[target] = genotype;
+            
+            // 노드 렌더링 변경
+            const formattedText = (genotype === 'FF_or_Ff') ? 'FF 또는 Ff' : genotype;
+            document.getElementById(`p-${target}`).innerText = formattedText;
+            
+            closePedigreeModal();
+            syncCanvaReportText();
+            showToast("선택 유전자형이 가계도 노드에 배정되었습니다.");
+        }
+
+        // 가계도 완전 분석 정답 검사
+        window.checkComprehensivePedigree = function() {
+            let totalTargets = Object.keys(pedigreeAnswersKey).length;
+            let correctCount = 0;
+            let missingCount = 0;
+
+            Object.keys(pedigreeAnswersKey).forEach(key => {
+                const studentVal = window.appState.pedigree[key];
+                if (!studentVal) {
+                    missingCount++;
+                } else if (studentVal === pedigreeAnswersKey[key]) {
+                    correctCount++;
+                }
+            });
+
+            if (missingCount > 0) {
+                showToast(`아직 유전자형을 지정하지 않은 구성원이 ${missingCount}명 존재합니다. 가계도 노드를 누르고 정답을 선택해보세요!`, false);
+                return;
+            }
+
+            if (correctCount === totalTargets) {
+                showToast("🎉 대단합니다! 4세대의 인과관계 모순 없이 모든 인물의 유전자형을 정확하게 밝혀내셨습니다. 보고서 탭으로 이동하세요!", true);
+            } else {
+                showToast(`일부 모순되거나 잘못된 유전 인과관계 추론이 있습니다. (${totalTargets}개 중 ${correctCount}개 매치 성공) 다시 고민해 볼까요?`, false);
+            }
+        }
+
+        // 가계도 리셋
+        window.resetComprehensivePedigree = function() {
+            Object.keys(pedigreeAnswersKey).forEach(key => {
+                window.appState.pedigree[key] = null;
+                document.getElementById(`p-${key}`).innerText = '-';
+            });
+            showToast("4세대 가계도 추론 기록이 모두 백지화되었습니다.");
+            syncCanvaReportText();
+        }
+
+        // 자가 진단 평가 점수 배정
+        window.assignSelfScore = function(grade) {
+            window.appState.selfScore = grade;
+            
+            const btnHigh = document.getElementById('score-btn-high');
+            const btnMid = document.getElementById('score-btn-mid');
+            const btnLow = document.getElementById('score-btn-low');
+
+            btnHigh.className = (grade === '최우수') ? "px-3 py-1.5 bg-indigo-600 text-white font-bold rounded-lg text-xs transition-all" : "px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all";
+            btnMid.className = (grade === '우수') ? "px-3 py-1.5 bg-indigo-600 text-white font-bold rounded-lg text-xs transition-all" : "px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all";
+            btnLow.className = (grade === '노력요함') ? "px-3 py-1.5 bg-indigo-600 text-white font-bold rounded-lg text-xs transition-all" : "px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold border border-slate-200 rounded-lg text-xs transition-all";
+
+            syncCanvaReportText();
+        }
+
+        // 보고서 작성 내용 캔바 복사용지에 실시간 반영
+        function syncCanvaReportText() {
+            const sName = document.getElementById('student-name-input').value || '(미입력)';
+            const q1 = document.getElementById('student-q1-input').value || '(미작성)';
+            const q2 = document.getElementById('student-q2-input').value || '(미작성)';
+
+            document.getElementById('out-student-name').innerText = sName;
+            document.getElementById('out-student-q1').innerText = q1;
+            document.getElementById('out-student-q2').innerText = q2;
+
+            // 가계도 상태 렌더러
+            const formatVal = (key) => {
+                const val = window.appState.pedigree[key];
+                if (!val) return '미배정';
+                return (val === 'FF_or_Ff') ? 'FF 또는 Ff' : val;
+            };
+
+            document.getElementById('out-gen-1-1').innerText = formatVal('node_1_1');
+            document.getElementById('out-gen-2-1').innerText = formatVal('node_2_1');
+            document.getElementById('out-gen-2-2').innerText = formatVal('node_2_2');
+            document.getElementById('out-gen-2-4').innerText = formatVal('node_2_4');
+            document.getElementById('out-gen-3-2').innerText = formatVal('node_3_2');
+            document.getElementById('out-gen-3-3').innerText = formatVal('node_3_3');
+            document.getElementById('out-gen-3-4').innerText = formatVal('node_3_4');
+            document.getElementById('out-gen-4-1').innerText = formatVal('node_4_1');
+
+            document.getElementById('out-student-score').innerText = window.appState.selfScore;
+        }
+
+        // 캔바 클립보드 복사 유틸
+        window.copyToCanvaClip = function() {
+            const range = document.createRange();
+            range.selectNode(document.getElementById('canva-report-block'));
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast("📋 캔바 보고서가 클립보드에 복사되었습니다! 캔바 협업 보드로 이동하여 붙여넣기 하세요.", true);
+                } else {
+                    showToast("복사에 실패했습니다. 마우스로 영역을 드래그해서 복사해주세요.", false);
+                }
+            } catch (err) {
+                showToast("브라우저 환경 제약으로 인해 자동 복사가 불가합니다. 수동 복사해주세요.", false);
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        // 교사 클라우드 서버에 전송 및 저장 처리
+        window.submitToTeacherServer = async function() {
+            const studentName = document.getElementById('student-name-input').value.trim();
+            const q1Answer = document.getElementById('student-q1-input').value.trim();
+            const q2Answer = document.getElementById('student-q2-input').value.trim();
+
+            if (!studentName) {
+                showToast("보고서 제출을 진행하려면 모둠명 및 학생 성명을 반드시 채워 넣으세요.", false);
+                return;
+            }
+
+            // 가계도 오답율 검사용 연산
+            let correctCount = 0;
+            let totalTargets = Object.keys(pedigreeAnswersKey).length;
+            Object.keys(pedigreeAnswersKey).forEach(key => {
+                if (window.appState.pedigree[key] === pedigreeAnswersKey[key]) {
+                    correctCount++;
+                }
+            });
+            const isCompletedAllCorrect = (correctCount === totalTargets);
+
+            const payload = {
+                studentName: studentName,
+                q1: q1Answer || "미작성",
+                q2: q2Answer || "미작성",
+                pedigreeCorrectRate: Math.round((correctCount / totalTargets) * 100),
+                isCompletedAllCorrect: isCompletedAllCorrect,
+                selfScore: window.appState.selfScore,
+                timestamp: new Date().toLocaleString()
+            };
+
+            if (isFirebaseOnline) {
+                // 파이어베이스 Firestore 전송 규정 준수 (RULE 1 - Strict Paths 사용)
+                try {
+                    const submissionsCol = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                    await addDoc(submissionsCol, payload);
+                    showToast("🚀 실시간 클라우드 대시보드에 여러분의 가계도 학습지가 완벽히 등록되었습니다!", true);
+                } catch(err) {
+                    console.error("Firestore submit error", err);
+                    showToast("서버 오류로 로컬 브라우저에 임시 전송 및 백업되었습니다.", false);
+                    saveOffline(payload);
+                }
+            } else {
+                // 오프라인 로컬스토리지 백업 모드
+                saveOffline(payload);
+                showToast("💻 로컬 임시 데이터베이스(오프라인)에 안전하게 학습지가 임시 저장되었습니다.", true);
+            }
+        }
+
+        // 오프라인 데이터 수집 복구 메커니즘
+        function saveOffline(payload) {
+            let current = [];
+            try {
+                current = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
+            } catch(e) {
+                current = [];
+            }
+            current.push(payload);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(current));
+            
+            // 로컬 상태 동기화
+            window.appState.allSubmissions = current;
+            renderTeacherDashboard();
+        }
+
+        // 실시간 전송 수집기 활성화
+        function activateRealtimeSubmissions() {
+            if (isFirebaseOnline) {
+                try {
+                    const submissionsCol = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                    
+                    // RULE 2 규정 준수: orderby() 사용 배제 후 JS 메모리 측 수동 내림차순 정렬
+                    onSnapshot(submissionsCol, (snapshot) => {
+                        const items = [];
+                        snapshot.forEach(docSnap => {
+                            items.push({ id: docSnap.id, ...docSnap.data() });
+                        });
+                        // 수동 정렬 적용
+                        items.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        
+                        window.appState.allSubmissions = items;
+                        renderTeacherDashboard();
+                    }, (err) => {
+                        console.error("Firestore onSnapshot error:", err);
+                        loadOfflineSubmissions();
+                    });
+                } catch(e) {
+                    console.error("Failed to start Firestore subscription. Fallback to LocalStorage.", e);
+                    loadOfflineSubmissions();
+                }
+            } else {
+                loadOfflineSubmissions();
+            }
+        }
+
+        function loadOfflineSubmissions() {
+            try {
+                window.appState.allSubmissions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
+                renderTeacherDashboard();
+            } catch(e) {
+                window.appState.allSubmissions = [];
+            }
+        }
+
+        window.refreshDashboardManually = function() {
+            if (isFirebaseOnline) {
+                activateRealtimeSubmissions();
+                showToast("실시간 학생 제출 정보를 클라우드 서버에서 최신 데이터로 동기화했습니다.");
+            } else {
+                loadOfflineSubmissions();
+                showToast("로컬 오프라인 데이터베이스를 동기화했습니다.");
+            }
+        }
+
+        // 데이터 전면 청소
+        window.clearAllSubmissionsWithConfirm = function() {
+            document.getElementById('confirm-delete-modal').classList.remove('hidden');
+        }
+
+        window.closeDeleteConfirmModal = function() {
+            document.getElementById('confirm-delete-modal').classList.add('hidden');
+        }
+
+        window.executeAllSubmissionsDelete = async function() {
+            document.getElementById('confirm-delete-modal').classList.add('hidden');
+            
+            if (isFirebaseOnline) {
+                try {
+                    const submissionsCol = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                    const snapshot = await getDocs(submissionsCol);
+                    
+                    // 순차 삭제
+                    const deletePromises = [];
+                    snapshot.forEach(docSnap => {
+                        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'submissions', docSnap.id);
+                        deletePromises.push(deleteDoc(ref));
+                    });
+                    
+                    await Promise.all(deletePromises);
+                    showToast("🧹 클라우드 서버의 모든 학생 제출 데이터가 청소되었습니다.");
+                } catch(e) {
+                    console.error("Error clearing submissions", e);
+                    showToast("클라우드 삭제 중 에러가 발생하여 로컬 클리너를 실행합니다.", false);
+                    localStorage.removeItem(LOCAL_STORAGE_KEY);
+                    window.appState.allSubmissions = [];
+                    renderTeacherDashboard();
+                }
+            } else {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                window.appState.allSubmissions = [];
+                renderTeacherDashboard();
+                showToast("🧹 오프라인 브라우저의 가상 모의 데이터가 전면 삭제되었습니다.");
+            }
+        }
+
+        // 교사용 대시보드 렌더러
+        function renderTeacherDashboard() {
+            const list = window.appState.allSubmissions;
+            const tbody = document.getElementById('teacher-dashboard-tbody');
+            
+            // 통계 초기화
+            let total = list.length;
+            let correctCount = 0;
+            let excellentCount = 0;
+
+            list.forEach(item => {
+                if (item.isCompletedAllCorrect || item.pedigreeCorrectRate === 100) correctCount++;
+                if (item.selfScore === '최우수') excellentCount++;
+            });
+
+            document.getElementById('stat-total-count').innerText = `${total} 건`;
+            document.getElementById('stat-correct-rate').innerText = total > 0 ? `${Math.round((correctCount / total) * 100)}%` : '0%';
+            document.getElementById('stat-excellent-rate').innerText = total > 0 ? `${Math.round((excellentCount / total) * 100)}%` : '0%';
+
+            if (total === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-2xl mb-1.5 block"></i>
+                            아직 제출한 모둠이나 학생이 없습니다. 대기 중...
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            list.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+
+                const correctBadge = item.pedigreeCorrectRate === 100 
+                    ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-1 rounded-md font-bold"><i class="fa-solid fa-circle-check"></i> 100% 완전 성공</span>`
+                    : `<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-md font-bold"><i class="fa-solid fa-triangle-exclamation"></i> 일부 오류 (${item.pedigreeCorrectRate}%)</span>`;
+
+                const ratingBadge = item.selfScore === '최우수' 
+                    ? `<span class="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-1 rounded-md font-bold">🥇 최우수</span>`
+                    : item.selfScore === '우수'
+                    ? `<span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-1 rounded-md font-bold">🥈 우수</span>`
+                    : `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded-md font-bold">🌱 노력요함</span>`;
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-slate-900">${escapeHtml(item.studentName)}</td>
+                    <td class="px-6 py-4">${correctBadge}</td>
+                    <td class="px-6 py-4 max-w-xs truncate" title="${escapeHtml(item.q1)}">${escapeHtml(item.q1)}</td>
+                    <td class="px-6 py-4 max-w-xs truncate" title="${escapeHtml(item.q2)}">${escapeHtml(item.q2)}</td>
+                    <td class="px-6 py-4">${ratingBadge}</td>
+                    <td class="px-6 py-4 text-slate-400 font-mono text-[10px]">${item.timestamp}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // 토스트 팝업 제어기
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast-message');
+            const icon = document.getElementById('toast-icon');
+            const text = document.getElementById('toast-text');
+
+            text.innerText = message;
+            if (isSuccess) {
+                icon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>';
+            } else {
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-400 text-lg"></i>';
+            }
+
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 4000);
+        }
+
+        // 초기화 가동 실행문
+        window.addEventListener('load', () => {
+            initDatabaseEngine();
+            setGenotype('father', 'Ff');
+            setGenotype('mother', 'Ff');
+            syncCanvaReportText();
+
+            // 리스너 바인딩
+            document.getElementById('student-name-input').addEventListener('input', syncCanvaReportText);
+            document.getElementById('student-q1-input').addEventListener('input', syncCanvaReportText);
+            document.getElementById('student-q2-input').addEventListener('input', syncCanvaReportText);
+        });
+
+    </script>
+</body>
+</html>
